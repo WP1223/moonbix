@@ -2,11 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const colors = require('colors');
-const readline = require('readline');
 const { HttpsProxyAgent } = require('https-proxy-agent');
+const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 
 class Binance {
-    constructor() {
+    constructor(accountIndex, queryString, proxy) {
+        this.accountIndex = accountIndex;
+        this.queryString = queryString;
+        this.proxy = proxy;
+        this.proxyIP = "Unknown";
         this.headers = {
             "Accept": "*/*",
             "Accept-Encoding": "gzip, deflate, br",
@@ -15,71 +19,71 @@ class Binance {
             "Origin": "https://www.binance.com",
             "Referer": "https://www.binance.com/vi/game/tg/moon-bix",
             "Sec-Ch-Ua": '"Not/A)Brand";v="99", "Google Chrome";v="115", "Chromium";v="115"',
-            "Sec-Ch-Ua-Mobile": "?0",
-            "Sec-Ch-Ua-Platform": '"Windows"',
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+            "Sec-Ch-Ua-Mobile": "?1",
+            "Sec-Ch-Ua-Platform": '"Android"',
+            "User-Agent": this.getRandomAndroidUserAgent()
         };
         this.game_response = null;
         this.game = null;
-        this.proxies = this.loadProxies();
     }
 
-    loadProxies() {
-        const proxyFile = path.join(__dirname, 'proxy.txt');
-        return fs.readFileSync(proxyFile, 'utf8').split('\n').filter(Boolean);
+    getRandomAndroidUserAgent() {
+        const androidUserAgents = [
+            "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36",
+            "Mozilla/5.0 (Linux; Android 11; Pixel 4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Mobile Safari/537.36",
+            "Mozilla/5.0 (Linux; Android 12; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.62 Mobile Safari/537.36",
+            "Mozilla/5.0 (Linux; Android 11; OnePlus 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Mobile Safari/537.36",
+            "Mozilla/5.0 (Linux; Android 10; Redmi Note 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Mobile Safari/537.36"
+        ];
+        return androidUserAgents[Math.floor(Math.random() * androidUserAgents.length)];
     }
 
-createAxiosInstance(proxy) {
-        const proxyAgent = new HttpsProxyAgent(proxy);
+    async log(msg, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString();
+        const accountPrefix = `[Pemulung ${this.accountIndex + 1}]`;
+        const ipPrefix = this.proxyIP ? `[${this.proxyIP}]` : '[Unknown IP]';
+        let logMessage = '';
+        
+        switch(type) {
+            case 'success':
+                logMessage = `${accountPrefix}${ipPrefix} ${msg}`.green;
+                break;
+            case 'error':
+                logMessage = `${accountPrefix}${ipPrefix} ${msg}`.red;
+                break;
+            case 'warning':
+                logMessage = `${accountPrefix}${ipPrefix} ${msg}`.yellow;
+                break;
+            case 'custom':
+                logMessage = `${accountPrefix}${ipPrefix} ${msg}`.magenta;
+                break;
+            default:
+                logMessage = `${accountPrefix}${ipPrefix} ${msg}`.blue;
+        }
+        
+        console.log(`[${timestamp}] ${logMessage}`);
+    }
+
+    createAxiosInstance() {
+        const proxyAgent = new HttpsProxyAgent(this.proxy);
         return axios.create({
             headers: this.headers,
             httpsAgent: proxyAgent
         });
     }
 
-    async checkProxyIP(proxy) {
+    async checkProxyIP() {
         try {
-            const proxyAgent = new HttpsProxyAgent(proxy);
+            const proxyAgent = new HttpsProxyAgent(this.proxy);
             const response = await axios.get('https://api.ipify.org?format=json', { httpsAgent: proxyAgent });
             if (response.status === 200) {
-                return response.data.ip;
+                this.proxyIP = response.data.ip;
             } else {
                 throw new Error(`Tidak dapat memeriksa IP proxy. Status code: ${response.status}`);
             }
         } catch (error) {
             throw new Error(`Error memeriksa IP proxy: ${error.message}`);
         }
-    }
-
-    log(msg, type = 'info') {
-        const timestamp = new Date().toLocaleTimeString();
-        switch(type) {
-            case 'success':
-                console.log(`[${timestamp}] [*] ${msg}`.green);
-                break;
-            case 'custom':
-                console.log(`[${timestamp}] [*] ${msg}`.magenta);
-                break;        
-            case 'error':
-                console.log(`[${timestamp}] [!] ${msg}`.red);
-                break;
-            case 'warning':
-                console.log(`[${timestamp}] [*] ${msg}`.yellow);
-                break;
-            default:
-                console.log(`[${timestamp}] [*] ${msg}`);
-        }
-    }
-
-    async countdown(seconds) {
-        for (let i = seconds; i > 0; i--) {
-            const timestamp = new Date().toLocaleTimeString();
-            readline.cursorTo(process.stdout, 0);
-            process.stdout.write(`[${timestamp}] [*] Tunggu bentar ${i} detik buat lajulaju...`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        readline.cursorTo(process.stdout, 0);
-        readline.clearLine(process.stdout, 0);
     }
 
     async callBinanceAPI(queryString, axios) {
@@ -93,7 +97,7 @@ createAxiosInstance(proxy) {
             });
 
             if (accessTokenResponse.data.code !== "000000" || !accessTokenResponse.data.success) {
-                throw new Error(`Failed to get access token: ${accessTokenResponse.data.message}`);
+                throw new Error(`Gagal mendapatkan akses token: ${accessTokenResponse.data.message}`);
             }
 
             const accessToken = accessTokenResponse.data.data.accessToken;
@@ -107,7 +111,7 @@ createAxiosInstance(proxy) {
             }, { headers: userInfoHeaders });
 
             if (userInfoResponse.data.code !== "000000" || !userInfoResponse.data.success) {
-                throw new Error(`Failed to get user info: ${userInfoResponse.data.message}`);
+                throw new Error(`Gagal mendapatkan info pengguna: ${userInfoResponse.data.message}`);
             }
 
             return { userInfo: userInfoResponse.data.data, accessToken };
@@ -128,19 +132,19 @@ createAxiosInstance(proxy) {
             this.game_response = response.data;
 
             if (response.data.code === '000000') {
-                this.log("Permainan berhasil dimulai", 'success');
+                this.log("Mulai permainan, jangan tutup sebelum selesai", 'success');
                 return true;
             }
 
             if (response.data.code === '116002') {
-                this.log("Upaya bermain tidak cukup!", 'warning');
+                this.log("Tidak cukup untuk bermain", 'warning');
             } else {
-                this.log("Error memulai game!", 'error');
+                this.log("Kesalahan saat memulai permainan!", 'error');
             }
 
             return false;
         } catch (error) {
-            this.log(`Tak bisa mulai game!: ${error.message}`, 'error');
+            this.log(`Tidak dapat memulai permainan: ${error.message}`, 'error');
             return false;
         }
     }
@@ -151,14 +155,13 @@ createAxiosInstance(proxy) {
 
             if (response.data.message === 'success') {
                 this.game = response.data.game;
-                this.log("Data game berhasil didapatkan", 'success');
                 return true;
             }
 
             this.log(response.data.message, 'warning');
             return false;
         } catch (error) {
-            this.log(`Error menerima data permainan: ${error.message}`, 'error');
+            this.log(`Terjadi kesalahan saat menerima data game: ${error.message}`, 'error');
             return false;
         }
     }
@@ -176,14 +179,14 @@ createAxiosInstance(proxy) {
             );
 
             if (response.data.code === '000000' && response.data.success) {
-                this.log(`Permainan selesai | Menerima ${this.game.log} poin`, 'custom');
+                this.log(`Berhasil menyelesaikan permainan | Menerima ${this.game.log} poin`, 'custom');
                 return true;
             }
 
-            this.log(`Tak bisa selesaikan permainan: ${response.data.message}`, 'error');
+            this.log(`Tidak dapat menyelesaikan permainan: ${response.data.message}`, 'error');
             return false;
         } catch (error) {
-            this.log(`Error selesaikan permainan: ${error.message}`, 'error');
+            this.log(`Kesalahan saat menyelesaikan permainan: ${error.message}`, 'error');
             return false;
         }
     }
@@ -201,7 +204,7 @@ createAxiosInstance(proxy) {
             });
 
             if (response.data.code !== "000000" || !response.data.success) {
-                throw new Error(`Tidak dapat mengambil daftar tugas: ${response.data.message}`);
+                throw new Error(`Tidak dapat memperoleh daftar task: ${response.data.message}`);
             }
 
             const taskList = response.data.data.data[0].taskList.data;
@@ -211,7 +214,7 @@ createAxiosInstance(proxy) {
             
             return resourceIds;
         } catch (error) {
-            this.log(`Tidak dapat mengambil daftar tugas: ${error.message}`, 'error');
+            this.log(`Tidak dapat memperoleh daftar task: ${error.message}`, 'error');
             return null;
         }
     }
@@ -230,16 +233,16 @@ createAxiosInstance(proxy) {
             });
 
             if (response.data.code !== "000000" || !response.data.success) {
-                throw new Error(`Tidak dapat menyelesaikan tugas: ${response.data.message}`);
+                throw new Error(`Tidak dapat menyelesaikan task: ${response.data.message}`);
             }
 
             if (response.data.data.type) {
-                this.log(`Berhasil menyelesaikan tugas ${response.data.data.type}!`, 'success');
+                this.log(`Menyelesaikan task ${response.data.data.type} berhasil!`, 'success');
             }
 
             return true;
         } catch (error) {
-            this.log(`Tidak dapat menyelesaikan tugas: ${error.message}`, 'error');
+            this.log(`Tidak dapat menyelesaikan task: ${error.message}`, 'error');
             return false;
         }
     }
@@ -255,60 +258,56 @@ createAxiosInstance(proxy) {
             if (resourceId !== 2058) {
                 const success = await this.completeTask(accessToken, resourceId, axios);
                 if (success) {
-                    this.log(`Tugas selesai: ${resourceId}`, 'success');
+                    this.log(`Task selesai: ${resourceId}`, 'success');
                 } else {
-                    this.log(`Tidak bisa selesaikan tugas: ${resourceId}`, 'warning');
+                    this.log(`Tidak dapat menyelesaikan task: ${resourceId}`, 'warning');
                 }
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
         }
     }
 
-    async playGameIfTicketsAvailable(queryString, accountIndex, firstName, proxy) {
-        let proxyIP = "Unknown";
+    async playGameIfTicketsAvailable() {
         try {
-            proxyIP = await this.checkProxyIP(proxy);
+            await this.checkProxyIP();
         } catch (error) {
-            throw new Error(`Cannot check the proxy IP. Status code: ${response.status}`);
+            this.log(`Tidak dapat memeriksa IP proxy: ${error.message}`, 'error');
+            return;
         }
 
-        console.log(`========== Pemulung ${accountIndex} | ${firstName.green} | ip: ${proxyIP} ==========`);
-
-        const axiosInstance = this.createAxiosInstance(proxy);
-        const result = await this.callBinanceAPI(queryString, axiosInstance);
+        const axiosInstance = this.createAxiosInstance();
+        const result = await this.callBinanceAPI(this.queryString, axiosInstance);
         if (!result) return;
 
         const { userInfo, accessToken } = result;
         const totalGrade = userInfo.metaInfo.totalGrade;
-        let availableTickets = userInfo.metaInfo.totalAttempts;
+        let availableTickets = userInfo.metaInfo.totalAttempts - userInfo.metaInfo.consumedAttempts;
 
         this.log(`Total poin: ${totalGrade}`);
         this.log(`Tiket tersedia: ${availableTickets}`);
-
+        await this.completeTasks(accessToken, axiosInstance)
         while (availableTickets > 0) {
-            this.log(`Mulai kerja dengan ${availableTickets} tiket yang tersedia`, 'info');
-
+            this.log(`Mulai permainan dengan ${availableTickets} Tiket tersedia`, 'info');
+            
             if (await this.startGame(accessToken, axiosInstance)) {
                 if (await this.gameData()) {
-                    await this.countdown(50);
-
+                    await new Promise(resolve => setTimeout(resolve, 50000));
+                    
                     if (await this.completeGame(accessToken, axiosInstance)) {
                         availableTickets--;
-                        this.log(`Sisa tiket: ${availableTickets}`, 'info');
+                        this.log(`Tiket yang tersisa: ${availableTickets}`, 'info');
+                        
+                        await new Promise(resolve => setTimeout(resolve, 3000));
                     } else {
                         break;
                     }
                 } else {
-                    this.log("Tidak dapat menerima data game", 'error');
+                    this.log("Tidak dapat menerima data permainan", 'error');
                     break;
                 }
             } else {
-                this.log("TIdak dapat memulai game", 'error');
+                this.log("Tidak dapat memulai permainan", 'error');
                 break;
-            }
-
-            if (availableTickets > 0) {
-                await new Promise(resolve => setTimeout(resolve, 3000));
             }
         }
 
@@ -316,37 +315,74 @@ createAxiosInstance(proxy) {
             this.log("Tiket habis boskuh", 'success');
         }
     }
-
-    async main() {
-        const dataFile = path.join(__dirname, 'data.txt');
-        const data = fs.readFileSync(dataFile, 'utf8')
-            .replace(/\r/g, '')
-            .split('\n')
-            .filter(Boolean);
-
-        while (true) {
-            for (let i = 0; i < data.length; i++) {
-                const queryString = data[i];
-                const userData = JSON.parse(decodeURIComponent(queryString.split('user=')[1].split('&')[0]));
-                const firstName = userData.first_name;
-                const proxy = this.proxies[i % this.proxies.length];
-
-                try {
-                    await this.playGameIfTicketsAvailable(queryString, i + 1, firstName, proxy);
-                } catch (error) {
-                    this.log(`Error processing account ${i + 1}: ${error.message}`, 'error');
-                }
-
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-
-            await this.countdown(60 * 60);
-        }
-    }
 }
 
-const client = new Binance();
-client.main().catch(err => {
-    client.log(err.message, 'error');
-    process.exit(1);
-});
+if (isMainThread) {
+    const dataFile = path.join(__dirname, 'data.txt');
+    const proxyFile = path.join(__dirname, 'proxy.txt');
+
+    const data = fs.readFileSync(dataFile, 'utf8')
+        .replace(/\r/g, '')
+        .split('\n')
+        .filter(Boolean);
+
+    const proxies = fs.readFileSync(proxyFile, 'utf8')
+        .split('\n')
+        .filter(Boolean);
+
+    const maxThreads = 10; //nomor urutan
+    const timeout = 10 * 60 * 1000;
+    const waitTime = 60 * 60 * 1000; //1 jam
+
+    async function runWorkers() {
+        while (true) {
+            console.log(`Kalo takut ke banned, main script pow aja :)...`.yellow);
+            
+            for (let i = 0; i < data.length; i += maxThreads) {
+                const workerPromises = [];
+
+                for (let j = 0; j < maxThreads && i + j < data.length; j++) {
+                    const accountIndex = i + j;
+                    const queryString = data[accountIndex];
+                    const proxy = proxies[accountIndex % proxies.length];
+
+                    const worker = new Worker(__filename, {
+                        workerData: { accountIndex, queryString, proxy }
+                    });
+
+                    const workerPromise = new Promise((resolve, reject) => {
+                        worker.on('message', resolve);
+                        worker.on('error', reject);
+                        worker.on('exit', (code) => {
+                            if (code !== 0) reject(new Error(`Berhebti dengan kode ${code}`));
+                        });
+
+                        setTimeout(() => {
+                            worker.terminate();
+                            reject(new Error('Worker timed out'));
+                        }, timeout);
+                    });
+
+                    workerPromises.push(workerPromise);
+                }
+
+                await Promise.allSettled(workerPromises);
+                await new Promise(resolve => setTimeout(resolve, 3 * 1000));
+            }
+
+            console.log(`Semua akun diproses. Tunggu bentar ${waitTime / 60000} menit sebelum dimulai lagi...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+    }
+
+    runWorkers().catch(console.error);
+} else {
+    const { accountIndex, queryString, proxy } = workerData;
+    const client = new Binance(accountIndex, queryString, proxy);
+    client.playGameIfTicketsAvailable().then(() => {
+        parentPort.postMessage('done');
+    }).catch(error => {
+        console.error(`Worker error: ${error.message}`);
+        parentPort.postMessage('error');
+    });
+}
