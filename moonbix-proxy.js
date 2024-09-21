@@ -29,7 +29,7 @@ class Binance {
         return fs.readFileSync(proxyFile, 'utf8').split('\n').filter(Boolean);
     }
 
-createAxiosInstance(proxy) {
+    createAxiosInstance(proxy) {
         const proxyAgent = new HttpsProxyAgent(proxy);
         return axios.create({
             headers: this.headers,
@@ -44,10 +44,10 @@ createAxiosInstance(proxy) {
             if (response.status === 200) {
                 return response.data.ip;
             } else {
-                throw new Error(`Tidak dapat memeriksa IP proxy. Status code: ${response.status}`);
+                throw new Error(`Không thể kiểm tra IP của proxy. Status code: ${response.status}`);
             }
         } catch (error) {
-            throw new Error(`Error memeriksa IP proxy: ${error.message}`);
+            throw new Error(`Error khi kiểm tra IP của proxy: ${error.message}`);
         }
     }
 
@@ -75,7 +75,7 @@ createAxiosInstance(proxy) {
         for (let i = seconds; i > 0; i--) {
             const timestamp = new Date().toLocaleTimeString();
             readline.cursorTo(process.stdout, 0);
-            process.stdout.write(`[${timestamp}] [*] Tunggu bentar ${i} detik buat lajulaju...`);
+            process.stdout.write(`[${timestamp}] [*] Chờ ${i} giây để tiếp tục...`);
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
         readline.cursorTo(process.stdout, 0);
@@ -128,19 +128,19 @@ createAxiosInstance(proxy) {
             this.game_response = response.data;
 
             if (response.data.code === '000000') {
-                this.log("Permainan berhasil dimulai", 'success');
+                this.log("Bắt đầu game thành công", 'success');
                 return true;
             }
 
             if (response.data.code === '116002') {
-                this.log("Upaya bermain tidak cukup!", 'warning');
+                this.log("Không đủ lượt chơi!", 'warning');
             } else {
-                this.log("Error memulai game!", 'error');
+                this.log("Lỗi khi bắt đầu game!", 'error');
             }
 
             return false;
         } catch (error) {
-            this.log(`Tak bisa mulai game!: ${error.message}`, 'error');
+            this.log(`Không thể bắt đầu game: ${error.message}`, 'error');
             return false;
         }
     }
@@ -151,14 +151,14 @@ createAxiosInstance(proxy) {
 
             if (response.data.message === 'success') {
                 this.game = response.data.game;
-                this.log("Data game berhasil didapatkan", 'success');
+                this.log("Nhận dữ liệu game thành công", 'success');
                 return true;
             }
 
             this.log(response.data.message, 'warning');
             return false;
         } catch (error) {
-            this.log(`Error menerima data permainan: ${error.message}`, 'error');
+            this.log(`Lỗi khi nhận dữ liệu game: ${error.message}`, 'error');
             return false;
         }
     }
@@ -176,14 +176,14 @@ createAxiosInstance(proxy) {
             );
 
             if (response.data.code === '000000' && response.data.success) {
-                this.log(`Permainan selesai | Menerima ${this.game.log} poin`, 'custom');
+                this.log(`Hoàn thành game thành công | Nhận được ${this.game.log} points`, 'custom');
                 return true;
             }
 
-            this.log(`Tak bisa selesaikan permainan: ${response.data.message}`, 'error');
+            this.log(`Không thể hoàn thành game: ${response.data.message}`, 'error');
             return false;
         } catch (error) {
-            this.log(`Error selesaikan permainan: ${error.message}`, 'error');
+            this.log(`Lỗi khi hoàn thành game: ${error.message}`, 'error');
             return false;
         }
     }
@@ -201,7 +201,7 @@ createAxiosInstance(proxy) {
             });
 
             if (response.data.code !== "000000" || !response.data.success) {
-                throw new Error(`Tidak dapat mengambil daftar tugas: ${response.data.message}`);
+                throw new Error(`Không thể lấy danh sách nhiệm vụ: ${response.data.message}`);
             }
 
             const taskList = response.data.data.data[0].taskList.data;
@@ -211,7 +211,7 @@ createAxiosInstance(proxy) {
             
             return resourceIds;
         } catch (error) {
-            this.log(`Tidak dapat mengambil daftar tugas: ${error.message}`, 'error');
+            this.log(`Không thể lấy danh sách nhiệm vụ: ${error.message}`, 'error');
             return null;
         }
     }
@@ -230,16 +230,16 @@ createAxiosInstance(proxy) {
             });
 
             if (response.data.code !== "000000" || !response.data.success) {
-                throw new Error(`Tidak dapat menyelesaikan tugas: ${response.data.message}`);
+                throw new Error(`Không thể hoàn thành nhiệm vụ: ${response.data.message}`);
             }
 
             if (response.data.data.type) {
-                this.log(`Berhasil menyelesaikan tugas ${response.data.data.type}!`, 'success');
+                this.log(`Làm nhiệm vụ ${response.data.data.type} thành công!`, 'success');
             }
 
             return true;
         } catch (error) {
-            this.log(`Tidak dapat menyelesaikan tugas: ${error.message}`, 'error');
+            this.log(`Không thể hoàn thành nhiệm vụ: ${error.message}`, 'error');
             return false;
         }
     }
@@ -255,9 +255,9 @@ createAxiosInstance(proxy) {
             if (resourceId !== 2058) {
                 const success = await this.completeTask(accessToken, resourceId, axios);
                 if (success) {
-                    this.log(`Tugas selesai: ${resourceId}`, 'success');
+                    this.log(`Đã hoàn thành nhiệm vụ: ${resourceId}`, 'success');
                 } else {
-                    this.log(`Tidak bisa selesaikan tugas: ${resourceId}`, 'warning');
+                    this.log(`Không thể hoàn thành nhiệm vụ: ${resourceId}`, 'warning');
                 }
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
@@ -269,11 +269,11 @@ createAxiosInstance(proxy) {
         try {
             proxyIP = await this.checkProxyIP(proxy);
         } catch (error) {
-            throw new Error(`Cannot check the proxy IP. Status code: ${response.status}`);
+            throw new Error(`Không thể kiểm tra IP của proxy. Status code: ${response.status}`);
         }
 
-        console.log(`========== Pemulung ${accountIndex} | ${firstName.green} | ip: ${proxyIP} ==========`);
-
+        console.log(`========== Tài khoản ${accountIndex} | ${firstName.green} | ip: ${proxyIP} ==========`);
+        
         const axiosInstance = this.createAxiosInstance(proxy);
         const result = await this.callBinanceAPI(queryString, axiosInstance);
         if (!result) return;
@@ -282,28 +282,28 @@ createAxiosInstance(proxy) {
         const totalGrade = userInfo.metaInfo.totalGrade;
         let availableTickets = userInfo.metaInfo.totalAttempts;
 
-        this.log(`Total poin: ${totalGrade}`);
-        this.log(`Tiket tersedia: ${availableTickets}`);
-
+        this.log(`Tổng điểm: ${totalGrade}`);
+        this.log(`Vé đang có: ${availableTickets}`);
+        
         while (availableTickets > 0) {
-            this.log(`Mulai kerja dengan ${availableTickets} tiket yang tersedia`, 'info');
-
+            this.log(`Bắt đầu game với ${availableTickets} vé có sẵn`, 'info');
+            
             if (await this.startGame(accessToken, axiosInstance)) {
                 if (await this.gameData()) {
                     await this.countdown(50);
-
+                    
                     if (await this.completeGame(accessToken, axiosInstance)) {
                         availableTickets--;
-                        this.log(`Sisa tiket: ${availableTickets}`, 'info');
+                        this.log(`Vé còn lại: ${availableTickets}`, 'info');
                     } else {
                         break;
                     }
                 } else {
-                    this.log("Tidak dapat menerima data game", 'error');
+                    this.log("Không thể nhận dữ liệu game", 'error');
                     break;
                 }
             } else {
-                this.log("TIdak dapat memulai game", 'error');
+                this.log("Không thể bắt đầu trò chơi", 'error');
                 break;
             }
 
@@ -313,7 +313,7 @@ createAxiosInstance(proxy) {
         }
 
         if (availableTickets === 0) {
-            this.log("Tiket habis boskuh", 'success');
+            this.log("Đã sử dụng hết vé", 'success');
         }
     }
 
@@ -330,11 +330,11 @@ createAxiosInstance(proxy) {
                 const userData = JSON.parse(decodeURIComponent(queryString.split('user=')[1].split('&')[0]));
                 const firstName = userData.first_name;
                 const proxy = this.proxies[i % this.proxies.length];
-
+                
                 try {
                     await this.playGameIfTicketsAvailable(queryString, i + 1, firstName, proxy);
                 } catch (error) {
-                    this.log(`Error processing account ${i + 1}: ${error.message}`, 'error');
+                    this.log(`Lỗi xử lý tài khoản ${i + 1}: ${error.message}`, 'error');
                 }
 
                 await new Promise(resolve => setTimeout(resolve, 1000));
