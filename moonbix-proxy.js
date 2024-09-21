@@ -4,7 +4,6 @@ const axios = require('axios');
 const colors = require('colors');
 const readline = require('readline');
 const { HttpsProxyAgent } = require('https-proxy-agent');
-const { displayHeader, delay } = require('./src/utils');
 
 class Binance {
     constructor() {
