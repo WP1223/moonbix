@@ -140,7 +140,7 @@ createAxiosInstance(proxy) {
 
             return false;
         } catch (error) {
-            this.log(`Cannot start the game: ${error.message}`, 'error');
+            this.log(`Tak bisa mulai game!: ${error.message}`, 'error');
             return false;
         }
     }
@@ -176,14 +176,14 @@ createAxiosInstance(proxy) {
             );
 
             if (response.data.code === '000000' && response.data.success) {
-                this.log(`Game completed successfully | Received ${this.game.log} points`, 'custom');
+                this.log(`Permainan selesai | Menerima ${this.game.log} poin`, 'custom');
                 return true;
             }
 
-            this.log(`Cannot complete the game: ${response.data.message}`, 'error');
+            this.log(`Tak bisa selesaikan permainan: ${response.data.message}`, 'error');
             return false;
         } catch (error) {
-            this.log(`Error completing the game: ${error.message}`, 'error');
+            this.log(`Error selesaikan permainan: ${error.message}`, 'error');
             return false;
         }
     }
