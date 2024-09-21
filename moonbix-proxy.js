@@ -341,7 +341,7 @@ createAxiosInstance(proxy) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
-            await this.countdown(15 * 60);
+            await this.countdown(60 * 60);
         }
     }
 }
