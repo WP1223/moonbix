@@ -8,5 +8,5 @@ for running  with proxy
 npm install https-proxy-agent
 ```
 ```bash
-node moonbix.js
+node moonbix.js / node moonbix-proxy.js
 ```
