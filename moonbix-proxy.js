@@ -19,9 +19,9 @@ class Binance {
             "Sec-Ch-Ua-Platform": '"Windows"',
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
         };
-        this.axios = axios.create({ headers: this.headers });
         this.game_response = null;
         this.game = null;
+        this.proxies = this.loadProxies();
     }
 
     loadProxies() {
@@ -29,7 +29,7 @@ class Binance {
         return fs.readFileSync(proxyFile, 'utf8').split('\n').filter(Boolean);
     }
 
-    createAxiosInstance(proxy) {
+createAxiosInstance(proxy) {
         const proxyAgent = new HttpsProxyAgent(proxy);
         return axios.create({
             headers: this.headers,
@@ -44,10 +44,10 @@ class Binance {
             if (response.status === 200) {
                 return response.data.ip;
             } else {
-                throw new Error(`Tidak dapat memeriksa IP proxy. Status code: ${response.status}`);
+                throw new Error(`Cannot check the proxy IP. Status code: ${response.status}`);
             }
         } catch (error) {
-            throw new Error(`Error Saat memeriksa IP proxy: ${error.message}`);
+            throw new Error(`Error checking the proxy IP: ${error.message}`);
         }
     }
 
@@ -75,19 +75,19 @@ class Binance {
         for (let i = seconds; i > 0; i--) {
             const timestamp = new Date().toLocaleTimeString();
             readline.cursorTo(process.stdout, 0);
-            process.stdout.write(`[${timestamp}] [*] Tunggu ${i} detik untuk melanjutkan...`);
+            process.stdout.write(`[${timestamp}] [*] Waiting ${i} seconds to continue...`);
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
         readline.cursorTo(process.stdout, 0);
         readline.clearLine(process.stdout, 0);
     }
 
-    async callBinanceAPI(queryString) {
+    async callBinanceAPI(queryString, axios) {
         const accessTokenUrl = "https://www.binance.com/bapi/growth/v1/friendly/growth-paas/third-party/access/accessToken";
         const userInfoUrl = "https://www.binance.com/bapi/growth/v1/friendly/growth-paas/mini-app-activity/third-party/user/user-info";
 
         try {
-            const accessTokenResponse = await this.axios.post(accessTokenUrl, {
+            const accessTokenResponse = await axios.post(accessTokenUrl, {
                 queryString: queryString,
                 socialType: "telegram"
             });
@@ -102,7 +102,7 @@ class Binance {
                 "X-Growth-Token": accessToken
             };
 
-            const userInfoResponse = await this.axios.post(userInfoUrl, {
+            const userInfoResponse = await axios.post(userInfoUrl, {
                 resourceId: 2056
             }, { headers: userInfoHeaders });
 
@@ -117,9 +117,9 @@ class Binance {
         }
     }
 
-    async startGame(accessToken) {
+    async startGame(accessToken, axios) {
         try {
-            const response = await this.axios.post(
+            const response = await axios.post(
                 'https://www.binance.com/bapi/growth/v1/friendly/growth-paas/mini-app-activity/third-party/game/start',
                 { resourceId: 2056 },
                 { headers: { ...this.headers, "X-Growth-Token": accessToken } }
@@ -128,19 +128,19 @@ class Binance {
             this.game_response = response.data;
 
             if (response.data.code === '000000') {
-                this.log("Mulai Game", 'success');
+                this.log("Game started successfully", 'success');
                 return true;
             }
 
             if (response.data.code === '116002') {
-                this.log("Tidak cukup untuk bermain!", 'warning');
+                this.log("Not enough play attempts!", 'warning');
             } else {
-                this.log("Kesalahan Saat Memulai Game!", 'error');
+                this.log("Error starting the game!", 'error');
             }
 
             return false;
         } catch (error) {
-            this.log(`Tidak Bisa Memulai Game: ${error.message}`, 'error');
+            this.log(`Cannot start the game: ${error.message}`, 'error');
             return false;
         }
     }
@@ -151,21 +151,21 @@ class Binance {
 
             if (response.data.message === 'success') {
                 this.game = response.data.game;
-                this.log("Menerima data game", 'success');
+                this.log("Game data retrieved successfully", 'success');
                 return true;
             }
 
             this.log(response.data.message, 'warning');
             return false;
         } catch (error) {
-            this.log(`Kesalahan saat menerima data game: ${error.message}`, 'error');
+            this.log(`Error receiving game data: ${error.message}`, 'error');
             return false;
         }
     }
 
-    async completeGame(accessToken) {
+    async completeGame(accessToken, axios) {
         try {
-            const response = await this.axios.post(
+            const response = await axios.post(
                 'https://www.binance.com/bapi/growth/v1/friendly/growth-paas/mini-app-activity/third-party/game/complete',
                 {
                     resourceId: 2056,
@@ -176,22 +176,22 @@ class Binance {
             );
 
             if (response.data.code === '000000' && response.data.success) {
-                this.log(`Menyelesaikan game | Menerima ${this.game.log} points`, 'custom');
+                this.log(`Game completed successfully | Received ${this.game.log} points`, 'custom');
                 return true;
             }
 
-            this.log(`Tidak Bisa Menyelesaikan Game: ${response.data.message}`, 'error');
+            this.log(`Cannot complete the game: ${response.data.message}`, 'error');
             return false;
         } catch (error) {
-            this.log(`Kesalahan saat menyelesaikan game: ${error.message}`, 'error');
+            this.log(`Error completing the game: ${error.message}`, 'error');
             return false;
         }
     }
 
-    async getTaskList(accessToken) {
+    async getTaskList(accessToken, axios) {
         const taskListUrl = "https://www.binance.com/bapi/growth/v1/friendly/growth-paas/mini-app-activity/third-party/task/list";
         try {
-            const response = await this.axios.post(taskListUrl, {
+            const response = await axios.post(taskListUrl, {
                 resourceId: 2056
             }, {
                 headers: {
@@ -201,7 +201,7 @@ class Binance {
             });
 
             if (response.data.code !== "000000" || !response.data.success) {
-                throw new Error(`Tidak dapat mengambil daftar misi: ${response.data.message}`);
+                throw new Error(`Cannot retrieve task list: ${response.data.message}`);
             }
 
             const taskList = response.data.data.data[0].taskList.data;
@@ -211,15 +211,15 @@ class Binance {
             
             return resourceIds;
         } catch (error) {
-            this.log(`Tidak dapat mengambil daftar misi: ${error.message}`, 'error');
+            this.log(`Cannot retrieve task list: ${error.message}`, 'error');
             return null;
         }
     }
 
-    async completeTask(accessToken, resourceId) {
+    async completeTask(accessToken, resourceId, axios) {
         const completeTaskUrl = "https://www.binance.com/bapi/growth/v1/friendly/growth-paas/mini-app-activity/third-party/task/complete";
         try {
-            const response = await this.axios.post(completeTaskUrl, {
+            const response = await axios.post(completeTaskUrl, {
                 resourceIdList: [resourceId],
                 referralCode: null
             }, {
@@ -230,80 +230,80 @@ class Binance {
             });
 
             if (response.data.code !== "000000" || !response.data.success) {
-                throw new Error(`Tidak dapat menyelesaikan tugas: ${response.data.message}`);
+                throw new Error(`Cannot complete the task: ${response.data.message}`);
             }
 
             if (response.data.data.type) {
-                this.log(`Tugas ${response.data.data.type} selesai!`, 'success');
+                this.log(`Successfully completed task ${response.data.data.type}!`, 'success');
             }
 
             return true;
         } catch (error) {
-            this.log(`Tidak dapat menyelesaikan tugas: ${error.message}`, 'error');
+            this.log(`Cannot complete the task: ${error.message}`, 'error');
             return false;
         }
     }
 
-    async completeTasks(accessToken) {
-        const resourceIds = await this.getTaskList(accessToken);
+    async completeTasks(accessToken, axios) {
+        const resourceIds = await this.getTaskList(accessToken, axios);
         if (!resourceIds || resourceIds.length === 0) {
-            this.log("Tidak ada tugas yang tidak selesai", 'info');
+            this.log("No uncompleted tasks found", 'info');
             return;
         }
 
         for (const resourceId of resourceIds) {
             if (resourceId !== 2058) {
-                const success = await this.completeTask(accessToken, resourceId);
+                const success = await this.completeTask(accessToken, resourceId, axios);
                 if (success) {
-                    this.log(`Telah menyelesaikan tugas: ${resourceId}`, 'success');
+                    this.log(`Task completed: ${resourceId}`, 'success');
                 } else {
-                    this.log(`Tidak dapat menyelesaikan tugas: ${resourceId}`, 'warning');
+                    this.log(`Cannot complete task: ${resourceId}`, 'warning');
                 }
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
         }
     }
 
-    async playGameIfTicketsAvailable(queryString, accountIndex, firstName) {
+    async playGameIfTicketsAvailable(queryString, accountIndex, firstName, proxy) {
         let proxyIP = "Unknown";
         try {
             proxyIP = await this.checkProxyIP(proxy);
         } catch (error) {
-            throw new Error(`Unable to check proxy IP. Status code: ${response.status}`);
+            throw new Error(`Cannot check the proxy IP. Status code: ${response.status}`);
         }
 
-        console.log(`========== Pemulung ${accountIndex} | ${firstName.green} ==========`);
-        
+        console.log(`========== Account ${accountIndex} | ${firstName.green} | ip: ${proxyIP} ==========`);
+
         const axiosInstance = this.createAxiosInstance(proxy);
-        const result = await this.callBinanceAPI(queryString);
+        const result = await this.callBinanceAPI(queryString, axiosInstance);
         if (!result) return;
 
         const { userInfo, accessToken } = result;
         const totalGrade = userInfo.metaInfo.totalGrade;
         let availableTickets = userInfo.metaInfo.totalAttempts;
 
-        this.log(`Total score: ${totalGrade}`);
-        this.log(`Tiket tersedia: ${availableTickets}`);
-        
+        this.log(`Total points: ${totalGrade}`);
+        this.log(`Available tickets: ${availableTickets}`);
+
         while (availableTickets > 0) {
-            this.log(`Mulai permainan dengan ${availableTickets} Tiket tersedia`, 'info');
-            
-            if (await this.startGame(accessToken)) {
+            this.log(`Starting game with ${availableTickets} available tickets`, 'info');
+
+            if (await this.startGame(accessToken, axiosInstance)) {
                 if (await this.gameData()) {
                     await this.countdown(50);
-                    
-                    if (await this.completeGame(accessToken)) {
+
+                    if (await this.completeGame(accessToken, axiosInstance)) {
                         availableTickets--;
-                        this.log(`Tiket yang tersisa: ${availableTickets}`, 'info');
+                        this.log(`Remaining tickets: ${availableTickets}`, 'info');
                     } else {
                         break;
                     }
                 } else {
-                    this.log("Tidak dapat menerima data game", 'error');
+                    this.log("Cannot receive game data", 'error');
                     break;
                 }
             } else {
-                this.log("Tidak Bisa Memulai Game", 'error');
+                this.log("Cannot start the game", 'error');
                 break;
             }
 
@@ -313,7 +313,7 @@ class Binance {
         }
 
         if (availableTickets === 0) {
-            this.log("Tiket Habis Bos", 'success');
+            this.log("All tickets used up", 'success');
         }
     }
 
@@ -330,17 +330,17 @@ class Binance {
                 const userData = JSON.parse(decodeURIComponent(queryString.split('user=')[1].split('&')[0]));
                 const firstName = userData.first_name;
                 const proxy = this.proxies[i % this.proxies.length];
-                
+
                 try {
                     await this.playGameIfTicketsAvailable(queryString, i + 1, firstName, proxy);
                 } catch (error) {
-                    this.log(`Proses akun error cok ${i + 1}: ${error.message}`, 'error');
+                    this.log(`Error processing account ${i + 1}: ${error.message}`, 'error');
                 }
 
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
-            await this.countdown(10 * 60);
+            await this.countdown(15 * 60);
         }
     }
 }
