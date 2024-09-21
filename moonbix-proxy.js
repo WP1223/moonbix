@@ -44,10 +44,10 @@ createAxiosInstance(proxy) {
             if (response.status === 200) {
                 return response.data.ip;
             } else {
-                throw new Error(`Tidak dapat memeriksa IP proxy. Status code: ${response.status}`);
+                throw new Error(`Cannot check the proxy IP. Status code: ${response.status}`);
             }
         } catch (error) {
-            throw new Error(`Error memeriksa IP proxy: ${error.message}`);
+            throw new Error(`Error checking the proxy IP: ${error.message}`);
         }
     }
 
@@ -75,7 +75,7 @@ createAxiosInstance(proxy) {
         for (let i = seconds; i > 0; i--) {
             const timestamp = new Date().toLocaleTimeString();
             readline.cursorTo(process.stdout, 0);
-            process.stdout.write(`[${timestamp}] [*] Tunggu bentar ${i} detik buat lajulaju...`);
+            process.stdout.write(`[${timestamp}] [*] Waiting ${i} seconds to continue...`);
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
         readline.cursorTo(process.stdout, 0);
@@ -128,19 +128,19 @@ createAxiosInstance(proxy) {
             this.game_response = response.data;
 
             if (response.data.code === '000000') {
-                this.log("Permainan berhasil dimulai", 'success');
+                this.log("Game started successfully", 'success');
                 return true;
             }
 
             if (response.data.code === '116002') {
-                this.log("Upaya bermain tidak cukup!", 'warning');
+                this.log("Not enough play attempts!", 'warning');
             } else {
-                this.log("Error memulai game!", 'error');
+                this.log("Error starting the game!", 'error');
             }
 
             return false;
         } catch (error) {
-            this.log(`Tak bisa mulai game!: ${error.message}`, 'error');
+            this.log(`Cannot start the game: ${error.message}`, 'error');
             return false;
         }
     }
@@ -151,14 +151,14 @@ createAxiosInstance(proxy) {
 
             if (response.data.message === 'success') {
                 this.game = response.data.game;
-                this.log("Data game berhasil didapatkan", 'success');
+                this.log("Game data retrieved successfully", 'success');
                 return true;
             }
 
             this.log(response.data.message, 'warning');
             return false;
         } catch (error) {
-            this.log(`Error menerima data permainan: ${error.message}`, 'error');
+            this.log(`Error receiving game data: ${error.message}`, 'error');
             return false;
         }
     }
@@ -176,14 +176,14 @@ createAxiosInstance(proxy) {
             );
 
             if (response.data.code === '000000' && response.data.success) {
-                this.log(`Permainan selesai | Menerima ${this.game.log} poin`, 'custom');
+                this.log(`Game completed successfully | Received ${this.game.log} points`, 'custom');
                 return true;
             }
 
-            this.log(`Tak bisa selesaikan permainan: ${response.data.message}`, 'error');
+            this.log(`Cannot complete the game: ${response.data.message}`, 'error');
             return false;
         } catch (error) {
-            this.log(`Error selesaikan permainan: ${error.message}`, 'error');
+            this.log(`Error completing the game: ${error.message}`, 'error');
             return false;
         }
     }
@@ -201,7 +201,7 @@ createAxiosInstance(proxy) {
             });
 
             if (response.data.code !== "000000" || !response.data.success) {
-                throw new Error(`Tidak dapat mengambil daftar tugas: ${response.data.message}`);
+                throw new Error(`Cannot retrieve task list: ${response.data.message}`);
             }
 
             const taskList = response.data.data.data[0].taskList.data;
@@ -211,7 +211,7 @@ createAxiosInstance(proxy) {
             
             return resourceIds;
         } catch (error) {
-            this.log(`Tidak dapat mengambil daftar tugas: ${error.message}`, 'error');
+            this.log(`Cannot retrieve task list: ${error.message}`, 'error');
             return null;
         }
     }
@@ -230,16 +230,16 @@ createAxiosInstance(proxy) {
             });
 
             if (response.data.code !== "000000" || !response.data.success) {
-                throw new Error(`Tidak dapat menyelesaikan tugas: ${response.data.message}`);
+                throw new Error(`Cannot complete the task: ${response.data.message}`);
             }
 
             if (response.data.data.type) {
-                this.log(`Berhasil menyelesaikan tugas ${response.data.data.type}!`, 'success');
+                this.log(`Successfully completed task ${response.data.data.type}!`, 'success');
             }
 
             return true;
         } catch (error) {
-            this.log(`Tidak dapat menyelesaikan tugas: ${error.message}`, 'error');
+            this.log(`Cannot complete the task: ${error.message}`, 'error');
             return false;
         }
     }
@@ -255,9 +255,9 @@ createAxiosInstance(proxy) {
             if (resourceId !== 2058) {
                 const success = await this.completeTask(accessToken, resourceId, axios);
                 if (success) {
-                    this.log(`Tugas selesai: ${resourceId}`, 'success');
+                    this.log(`Task completed: ${resourceId}`, 'success');
                 } else {
-                    this.log(`Tidak bisa selesaikan tugas: ${resourceId}`, 'warning');
+                    this.log(`Cannot complete task: ${resourceId}`, 'warning');
                 }
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
@@ -272,7 +272,7 @@ createAxiosInstance(proxy) {
             throw new Error(`Cannot check the proxy IP. Status code: ${response.status}`);
         }
 
-        console.log(`========== Pemulung ${accountIndex} | ${firstName.green} | ip: ${proxyIP} ==========`);
+        console.log(`========== Account ${accountIndex} | ${firstName.green} | ip: ${proxyIP} ==========`);
 
         const axiosInstance = this.createAxiosInstance(proxy);
         const result = await this.callBinanceAPI(queryString, axiosInstance);
@@ -282,11 +282,11 @@ createAxiosInstance(proxy) {
         const totalGrade = userInfo.metaInfo.totalGrade;
         let availableTickets = userInfo.metaInfo.totalAttempts;
 
-        this.log(`Total poin: ${totalGrade}`);
-        this.log(`Tiket tersedia: ${availableTickets}`);
+        this.log(`Total points: ${totalGrade}`);
+        this.log(`Available tickets: ${availableTickets}`);
 
         while (availableTickets > 0) {
-            this.log(`Mulai kerja dengan ${availableTickets} tiket yang tersedia`, 'info');
+            this.log(`Starting game with ${availableTickets} available tickets`, 'info');
 
             if (await this.startGame(accessToken, axiosInstance)) {
                 if (await this.gameData()) {
@@ -294,16 +294,16 @@ createAxiosInstance(proxy) {
 
                     if (await this.completeGame(accessToken, axiosInstance)) {
                         availableTickets--;
-                        this.log(`Sisa tiket: ${availableTickets}`, 'info');
+                        this.log(`Remaining tickets: ${availableTickets}`, 'info');
                     } else {
                         break;
                     }
                 } else {
-                    this.log("Tidak dapat menerima data game", 'error');
+                    this.log("Cannot receive game data", 'error');
                     break;
                 }
             } else {
-                this.log("TIdak dapat memulai game", 'error');
+                this.log("Cannot start the game", 'error');
                 break;
             }
 
@@ -313,7 +313,7 @@ createAxiosInstance(proxy) {
         }
 
         if (availableTickets === 0) {
-            this.log("Tiket habis boskuh", 'success');
+            this.log("All tickets used up", 'success');
         }
     }
 
