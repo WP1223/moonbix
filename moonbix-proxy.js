@@ -19,9 +19,9 @@ class Binance {
             "Sec-Ch-Ua-Platform": '"Windows"',
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
         };
+        this.axios = axios.create({ headers: this.headers });
         this.game_response = null;
         this.game = null;
-        this.proxies = this.loadProxies();
     }
 
     loadProxies() {
@@ -44,10 +44,10 @@ class Binance {
             if (response.status === 200) {
                 return response.data.ip;
             } else {
-                throw new Error(`Không thể kiểm tra IP của proxy. Status code: ${response.status}`);
+                throw new Error(`Tidak dapat memeriksa IP proxy. Status code: ${response.status}`);
             }
         } catch (error) {
-            throw new Error(`Error khi kiểm tra IP của proxy: ${error.message}`);
+            throw new Error(`Error Saat memeriksa IP proxy: ${error.message}`);
         }
     }
 
@@ -75,19 +75,19 @@ class Binance {
         for (let i = seconds; i > 0; i--) {
             const timestamp = new Date().toLocaleTimeString();
             readline.cursorTo(process.stdout, 0);
-            process.stdout.write(`[${timestamp}] [*] Chờ ${i} giây để tiếp tục...`);
+            process.stdout.write(`[${timestamp}] [*] Tunggu ${i} detik untuk melanjutkan...`);
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
         readline.cursorTo(process.stdout, 0);
         readline.clearLine(process.stdout, 0);
     }
 
-    async callBinanceAPI(queryString, axios) {
+    async callBinanceAPI(queryString) {
         const accessTokenUrl = "https://www.binance.com/bapi/growth/v1/friendly/growth-paas/third-party/access/accessToken";
         const userInfoUrl = "https://www.binance.com/bapi/growth/v1/friendly/growth-paas/mini-app-activity/third-party/user/user-info";
 
         try {
-            const accessTokenResponse = await axios.post(accessTokenUrl, {
+            const accessTokenResponse = await this.axios.post(accessTokenUrl, {
                 queryString: queryString,
                 socialType: "telegram"
             });
@@ -102,7 +102,7 @@ class Binance {
                 "X-Growth-Token": accessToken
             };
 
-            const userInfoResponse = await axios.post(userInfoUrl, {
+            const userInfoResponse = await this.axios.post(userInfoUrl, {
                 resourceId: 2056
             }, { headers: userInfoHeaders });
 
@@ -117,9 +117,9 @@ class Binance {
         }
     }
 
-    async startGame(accessToken, axios) {
+    async startGame(accessToken) {
         try {
-            const response = await axios.post(
+            const response = await this.axios.post(
                 'https://www.binance.com/bapi/growth/v1/friendly/growth-paas/mini-app-activity/third-party/game/start',
                 { resourceId: 2056 },
                 { headers: { ...this.headers, "X-Growth-Token": accessToken } }
@@ -128,19 +128,19 @@ class Binance {
             this.game_response = response.data;
 
             if (response.data.code === '000000') {
-                this.log("Bắt đầu game thành công", 'success');
+                this.log("Mulai Game", 'success');
                 return true;
             }
 
             if (response.data.code === '116002') {
-                this.log("Không đủ lượt chơi!", 'warning');
+                this.log("Tidak cukup untuk bermain!", 'warning');
             } else {
-                this.log("Lỗi khi bắt đầu game!", 'error');
+                this.log("Kesalahan Saat Memulai Game!", 'error');
             }
 
             return false;
         } catch (error) {
-            this.log(`Không thể bắt đầu game: ${error.message}`, 'error');
+            this.log(`Tidak Bisa Memulai Game: ${error.message}`, 'error');
             return false;
         }
     }
@@ -151,21 +151,21 @@ class Binance {
 
             if (response.data.message === 'success') {
                 this.game = response.data.game;
-                this.log("Nhận dữ liệu game thành công", 'success');
+                this.log("Menerima data game", 'success');
                 return true;
             }
 
             this.log(response.data.message, 'warning');
             return false;
         } catch (error) {
-            this.log(`Lỗi khi nhận dữ liệu game: ${error.message}`, 'error');
+            this.log(`Kesalahan saat menerima data game: ${error.message}`, 'error');
             return false;
         }
     }
 
-    async completeGame(accessToken, axios) {
+    async completeGame(accessToken) {
         try {
-            const response = await axios.post(
+            const response = await this.axios.post(
                 'https://www.binance.com/bapi/growth/v1/friendly/growth-paas/mini-app-activity/third-party/game/complete',
                 {
                     resourceId: 2056,
@@ -176,22 +176,22 @@ class Binance {
             );
 
             if (response.data.code === '000000' && response.data.success) {
-                this.log(`Hoàn thành game thành công | Nhận được ${this.game.log} points`, 'custom');
+                this.log(`Menyelesaikan game | Menerima ${this.game.log} points`, 'custom');
                 return true;
             }
 
-            this.log(`Không thể hoàn thành game: ${response.data.message}`, 'error');
+            this.log(`Tidak Bisa Menyelesaikan Game: ${response.data.message}`, 'error');
             return false;
         } catch (error) {
-            this.log(`Lỗi khi hoàn thành game: ${error.message}`, 'error');
+            this.log(`Kesalahan saat menyelesaikan game: ${error.message}`, 'error');
             return false;
         }
     }
 
-    async getTaskList(accessToken, axios) {
+    async getTaskList(accessToken) {
         const taskListUrl = "https://www.binance.com/bapi/growth/v1/friendly/growth-paas/mini-app-activity/third-party/task/list";
         try {
-            const response = await axios.post(taskListUrl, {
+            const response = await this.axios.post(taskListUrl, {
                 resourceId: 2056
             }, {
                 headers: {
@@ -201,7 +201,7 @@ class Binance {
             });
 
             if (response.data.code !== "000000" || !response.data.success) {
-                throw new Error(`Không thể lấy danh sách nhiệm vụ: ${response.data.message}`);
+                throw new Error(`Tidak dapat mengambil daftar misi: ${response.data.message}`);
             }
 
             const taskList = response.data.data.data[0].taskList.data;
@@ -211,15 +211,15 @@ class Binance {
             
             return resourceIds;
         } catch (error) {
-            this.log(`Không thể lấy danh sách nhiệm vụ: ${error.message}`, 'error');
+            this.log(`Tidak dapat mengambil daftar misi: ${error.message}`, 'error');
             return null;
         }
     }
 
-    async completeTask(accessToken, resourceId, axios) {
+    async completeTask(accessToken, resourceId) {
         const completeTaskUrl = "https://www.binance.com/bapi/growth/v1/friendly/growth-paas/mini-app-activity/third-party/task/complete";
         try {
-            const response = await axios.post(completeTaskUrl, {
+            const response = await this.axios.post(completeTaskUrl, {
                 resourceIdList: [resourceId],
                 referralCode: null
             }, {
@@ -230,80 +230,80 @@ class Binance {
             });
 
             if (response.data.code !== "000000" || !response.data.success) {
-                throw new Error(`Không thể hoàn thành nhiệm vụ: ${response.data.message}`);
+                throw new Error(`Tidak dapat menyelesaikan tugas: ${response.data.message}`);
             }
 
             if (response.data.data.type) {
-                this.log(`Làm nhiệm vụ ${response.data.data.type} thành công!`, 'success');
+                this.log(`Tugas ${response.data.data.type} selesai!`, 'success');
             }
 
             return true;
         } catch (error) {
-            this.log(`Không thể hoàn thành nhiệm vụ: ${error.message}`, 'error');
+            this.log(`Tidak dapat menyelesaikan tugas: ${error.message}`, 'error');
             return false;
         }
     }
 
-    async completeTasks(accessToken, axios) {
-        const resourceIds = await this.getTaskList(accessToken, axios);
+    async completeTasks(accessToken) {
+        const resourceIds = await this.getTaskList(accessToken);
         if (!resourceIds || resourceIds.length === 0) {
-            this.log("No uncompleted tasks found", 'info');
+            this.log("Tidak ada tugas yang tidak selesai", 'info');
             return;
         }
 
         for (const resourceId of resourceIds) {
             if (resourceId !== 2058) {
-                const success = await this.completeTask(accessToken, resourceId, axios);
+                const success = await this.completeTask(accessToken, resourceId);
                 if (success) {
-                    this.log(`Đã hoàn thành nhiệm vụ: ${resourceId}`, 'success');
+                    this.log(`Telah menyelesaikan tugas: ${resourceId}`, 'success');
                 } else {
-                    this.log(`Không thể hoàn thành nhiệm vụ: ${resourceId}`, 'warning');
+                    this.log(`Tidak dapat menyelesaikan tugas: ${resourceId}`, 'warning');
                 }
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
         }
     }
 
-    async playGameIfTicketsAvailable(queryString, accountIndex, firstName, proxy) {
+    async playGameIfTicketsAvailable(queryString, accountIndex, firstName) {
         let proxyIP = "Unknown";
         try {
             proxyIP = await this.checkProxyIP(proxy);
         } catch (error) {
-            throw new Error(`Không thể kiểm tra IP của proxy. Status code: ${response.status}`);
+            throw new Error(`Unable to check proxy IP. Status code: ${response.status}`);
         }
 
-        console.log(`========== Tài khoản ${accountIndex} | ${firstName.green} | ip: ${proxyIP} ==========`);
+        console.log(`========== Pemulung ${accountIndex} | ${firstName.green} ==========`);
         
         const axiosInstance = this.createAxiosInstance(proxy);
-        const result = await this.callBinanceAPI(queryString, axiosInstance);
+        const result = await this.callBinanceAPI(queryString);
         if (!result) return;
 
         const { userInfo, accessToken } = result;
         const totalGrade = userInfo.metaInfo.totalGrade;
         let availableTickets = userInfo.metaInfo.totalAttempts;
 
-        this.log(`Tổng điểm: ${totalGrade}`);
-        this.log(`Vé đang có: ${availableTickets}`);
+        this.log(`Total score: ${totalGrade}`);
+        this.log(`Tiket tersedia: ${availableTickets}`);
         
         while (availableTickets > 0) {
-            this.log(`Bắt đầu game với ${availableTickets} vé có sẵn`, 'info');
+            this.log(`Mulai permainan dengan ${availableTickets} Tiket tersedia`, 'info');
             
-            if (await this.startGame(accessToken, axiosInstance)) {
+            if (await this.startGame(accessToken)) {
                 if (await this.gameData()) {
                     await this.countdown(50);
                     
-                    if (await this.completeGame(accessToken, axiosInstance)) {
+                    if (await this.completeGame(accessToken)) {
                         availableTickets--;
-                        this.log(`Vé còn lại: ${availableTickets}`, 'info');
+                        this.log(`Tiket yang tersisa: ${availableTickets}`, 'info');
                     } else {
                         break;
                     }
                 } else {
-                    this.log("Không thể nhận dữ liệu game", 'error');
+                    this.log("Tidak dapat menerima data game", 'error');
                     break;
                 }
             } else {
-                this.log("Không thể bắt đầu trò chơi", 'error');
+                this.log("Tidak Bisa Memulai Game", 'error');
                 break;
             }
 
@@ -313,7 +313,7 @@ class Binance {
         }
 
         if (availableTickets === 0) {
-            this.log("Đã sử dụng hết vé", 'success');
+            this.log("Tiket Habis Bos", 'success');
         }
     }
 
@@ -334,13 +334,13 @@ class Binance {
                 try {
                     await this.playGameIfTicketsAvailable(queryString, i + 1, firstName, proxy);
                 } catch (error) {
-                    this.log(`Lỗi xử lý tài khoản ${i + 1}: ${error.message}`, 'error');
+                    this.log(`Proses akun error cok ${i + 1}: ${error.message}`, 'error');
                 }
 
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
-            await this.countdown(1440 * 60);
+            await this.countdown(10 * 60);
         }
     }
 }
