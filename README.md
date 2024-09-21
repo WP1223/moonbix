@@ -1,3 +1,13 @@
+git clone
+
+```bash
+cd moonbix
+```
+
+```bash
+npm install
+```
+
 ```bash
 npm install axios
 npm install colors
